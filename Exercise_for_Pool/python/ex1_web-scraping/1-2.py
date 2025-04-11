@@ -95,7 +95,7 @@ for inf in restaurants_inf_list:
     rest = address[len(prefecture):]
 
     # 市区町村
-    city_pattern = r'^[\u4E00-\u9FFF]+'
+    city_pattern = r'^([\u4E00-\u9FFF|あ-ん|ア-ン|0-9]+[市区町村条])+[\u4E00-\u9FFF]+'
     city_match = re.match(city_pattern, rest)
     city = city_match.group(0) if city_match else ''
     cities.append(city)
