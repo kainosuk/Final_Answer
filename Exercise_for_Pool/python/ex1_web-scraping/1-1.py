@@ -5,12 +5,16 @@ import re
 import pandas as pd
 
 class Restaurant:
-    def __init__(self, name, tel, email, prefecture, url):
+    def __init__(self, name, tel, email, prefecture, city, banchi, building, url, ssl_):
         self.na = name
         self.te = tel
         self.em = email
         self.pr = prefecture
+        self.ci = city
+        self.ba = banchi
+        self.bu = building
         self.ur = url
+        self.ss = ssl_
     
 
 
@@ -22,12 +26,15 @@ urls = [url_1, url_2]
 inf_urls = []
 restaurants_list = []
 
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
+}
 
 count = 0
 
 for url in urls:
 
-    res = requests.get(url)
+    res = requests.get(url, headers = headers)
     res.encoding = res.apparent_encoding
     time.sleep(3)
     soup = BeautifulSoup(res.text, 'html.parser')
@@ -41,8 +48,6 @@ for url in urls:
         else:            
             get_a = restaurant.find('a')
             inf_urls.append(get_a.get('href'))
-
-            time.sleep(3)
                         
             count += 1
         
@@ -53,8 +58,8 @@ for url in urls:
 
 for inf_url in inf_urls:
     res = requests.get(inf_url)
-    res.encoding = res.apparent_encoding
     time.sleep(3)
+    res.encoding = res.apparent_encoding
     soup = BeautifulSoup(res.text,'html.parser')
     
     name = soup.find('h1',class_='shop-info__name').text
@@ -63,14 +68,35 @@ for inf_url in inf_urls:
     
     address = soup.find('span', class_='region').text
     
-    pattern_pr = '東京都|北海道|(京都|大阪)府|.{2,3}県'
-    mobj = re.match(pattern_pr,address)
-    prefecture = mobj.group()
-
-    url = '' 
+    #都道府県
+    pref_pattern = r'^(東京都|北海道|(?:京都|大阪)府|.{2,3}県)'
+    pref_match = re.match(pref_pattern, address)
+    prefecture = pref_match.group(0) if pref_match else ''
     
-    time.sleep(3)
-    restaurant = Restaurant(name,tel,email,prefecture,url)
+    rest = address[len(prefecture):]
+
+    # 市区町村
+    city_pattern = r'^[\u4E00-\u9FFF]+'
+    city_match = re.match(city_pattern, rest)
+    city = city_match.group(0) if city_match else ''
+    
+    rest = rest[len(city):] if city else rest
+
+    # 番地
+    banchi_pattern = r'^[0-9]+(-[0-9]+){0,2}'
+    banchi_match = re.match(banchi_pattern, rest)
+    banchi = banchi_match.group(0) if banchi_match else ''
+    
+    rest = rest[len(banchi):] if banchi else rest
+
+    # 建物名
+    building = rest if rest else ''
+
+    url = ''
+    
+    ssl_ = '' 
+    
+    restaurant = Restaurant(name,tel,email,prefecture,city,banchi,building,url,ssl_)
     
     restaurants_list.append(restaurant)
 
@@ -82,7 +108,11 @@ df = pd.DataFrame({
     '電話番号':[r.te for r in restaurants_list],
     'メールアドレス':[r.em for r in restaurants_list],
     '都道府県':[r.pr for r in restaurants_list],
-    'URL':[r.ur for r in restaurants_list]
+    '市区町村':[r.ci for r in restaurants_list],
+    '番地':[r.ba for r in restaurants_list],
+    '建物名':[r.bu for r in restaurants_list],
+    'URL':[r.ur for r in restaurants_list],
+    'SSL':[r.ss for r in restaurants_list]
 })
 
 df.to_csv('1-1.csv',index=False,encoding='utf-8-sig')
